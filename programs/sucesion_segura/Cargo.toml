@@ -1,0 +1,15 @@
+[package]
+name = "sucesion_segura"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+name = "sucesion_segura"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+block-buffer = "=0.10.4"
+digest = "=0.10.7"

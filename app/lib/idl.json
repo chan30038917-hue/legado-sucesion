@@ -1,0 +1,307 @@
+{
+  "version": "0.1.0",
+  "name": "sucesion_segura",
+  "instructions": [
+    {
+      "name": "initializeVault",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "solVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "feeWallet",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "beneficiary1",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "beneficiary2",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "inactivityPeriod",
+          "type": "i64"
+        },
+        {
+          "name": "beneficiaryEmails",
+          "type": {
+            "array": [
+              "string",
+              2
+            ]
+          }
+        },
+        {
+          "name": "guaranteeLamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "ping",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancelVault",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "solVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "pauseInheritance",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxDays",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "resumeInheritance",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "triggerInheritance",
+      "accounts": [
+        {
+          "name": "caller",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimInheritance",
+      "accounts": [
+        {
+          "name": "beneficiary1",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "beneficiary2",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "solVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "beneficiaryEmails",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "beneficiaryPubkeys",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "inactivityPeriod",
+            "type": "i64"
+          },
+          {
+            "name": "lastActive",
+            "type": "i64"
+          },
+          {
+            "name": "isTriggered",
+            "type": "bool"
+          },
+          {
+            "name": "guaranteeLamports",
+            "type": "u64"
+          },
+          {
+            "name": "solVaultBump",
+            "type": "u8"
+          },
+          {
+            "name": "triggeredAt",
+            "type": "i64"
+          },
+          {
+            "name": "withdrawalClaimed",
+            "type": "bool"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "pausedAt",
+            "type": "i64"
+          },
+          {
+            "name": "maxPauseDuration",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "No autorizado."
+    },
+    {
+      "code": 6001,
+      "name": "AlreadyTriggered",
+      "msg": "La bóveda ya ha sido activada."
+    },
+    {
+      "code": 6002,
+      "name": "NotYetExpired",
+      "msg": "El período de inactividad aún no ha expirado."
+    },
+    {
+      "code": 6003,
+      "name": "AlreadyClaimed",
+      "msg": "Los activos ya han sido reclamados."
+    },
+    {
+      "code": 6004,
+      "name": "AlreadyPaused",
+      "msg": "La bóveda ya está pausada."
+    },
+    {
+      "code": 6005,
+      "name": "NotPaused",
+      "msg": "La bóveda no está pausada."
+    },
+    {
+      "code": 6006,
+      "name": "StillPaused",
+      "msg": "La bóveda sigue en pausa."
+    },
+    {
+      "code": 6007,
+      "name": "InvalidPauseDuration",
+      "msg": "La pausa debe ser entre 1 y 90 días."
+    }
+  ],
+  "metadata": {
+    "address": "CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB"
+  }
+}

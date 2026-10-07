@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+app/node_modules/
+**/node_modules/
+
+# Build artifacts
+target/
+app/.next/
+.next/
+
+# Anchor
+.anchor/
+test-ledger/
+
+# Environment
+.env
+.env.local
+*.env
+
+# Vercel
+.vercel
+app/.vercel
+
+# Secrets
+*.pem
+*.key
+
+# Rust
+**/*.rs.bk
+
+# OS
+.DS_Store
+
+# Yarn/Surfpool
+.yarn
+.surfpool
+
+# Logs
+*.log
