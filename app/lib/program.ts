@@ -28,9 +28,9 @@ export function getVaultPDA(owner: PublicKey): [PublicKey, number] {
   );
 }
 
-export function getTokenVaultPDA(owner: PublicKey): [PublicKey, number] {
+export function getSolVaultPDA(owner: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("token_vault"), owner.toBuffer()],
+    [Buffer.from("sol_vault"), owner.toBuffer()],
     PROGRAM_ID
   );
 }

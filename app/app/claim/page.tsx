@@ -92,6 +92,7 @@ export default function ClaimPage() {
         .claimInheritance()
         .accounts({
           beneficiary1: vaultInfo.beneficiaryPubkeys[0],
+          owner: vaultInfo.ownerPubkey,
           beneficiary2: vaultInfo.beneficiaryPubkeys[1],
           vault: vaultPda,
           solVault: solVaultPda,

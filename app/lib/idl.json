@@ -175,6 +175,11 @@
           "isSigner": true
         },
         {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "vault",
           "isMut": true,
           "isSigner": false
@@ -299,6 +304,21 @@
       "code": 6007,
       "name": "InvalidPauseDuration",
       "msg": "La pausa debe ser entre 1 y 90 días."
+    },
+    {
+      "code": 6008,
+      "name": "InvalidFeeWallet",
+      "msg": "Fee wallet inválida."
+    },
+    {
+      "code": 6009,
+      "name": "InvalidGuarantee",
+      "msg": "La garantía debe ser mayor a 0."
+    },
+    {
+      "code": 6010,
+      "name": "InvalidInactivityPeriod",
+      "msg": "El período de inactividad debe ser mayor a 0."
     }
   ],
   "metadata": {

@@ -28,7 +28,7 @@ type Step = 1 | 2 | 3;
 
 // Wallet donde se deposita la comisión (tu wallet)
 const FEE_WALLET = new PublicKey(
-  "6NkMSjdnaw4bpgVYV9Ss7nRTofPvpfCd3stJHD7Nqjsu"
+  "Fng4pr8QMJf6idx1frCVA2n19rocRTrXmXKfKj9dApm6"
 );
 
 export default function CreateVaultPage() {
