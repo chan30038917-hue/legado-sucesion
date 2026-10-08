@@ -77,6 +77,25 @@ pub mod sucesion_segura {
         );
         system_program::transfer(guarantee_ctx, guarantee_lamports)?;
 
+        // V9: Verificar que la PDA sol_vault quede rent-exempt
+        let rent = Rent::get()?;
+        let min_rent = rent.minimum_balance(0);
+        require!(
+            ctx.accounts.sol_vault.lamports() >= min_rent,
+            SucesionError::InsufficientRent
+        );
+
+        // V8: Emitir evento
+        emit!(VaultCreated {
+            owner: ctx.accounts.owner.key(),
+            vault: vault.key(),
+            beneficiary1: ctx.accounts.beneficiary1.key(),
+            beneficiary2: ctx.accounts.beneficiary2.key(),
+            guarantee_lamports,
+            inactivity_period,
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+
         msg!("Bóveda creada. Comisión y garantía bloqueadas.");
         Ok(())
     }
@@ -85,6 +104,10 @@ pub mod sucesion_segura {
         let vault = &mut ctx.accounts.vault;
         require!(!vault.is_triggered, SucesionError::AlreadyTriggered);
         vault.last_active = Clock::get()?.unix_timestamp;
+        emit!(PingRegistered {
+            owner: vault.owner,
+            timestamp: vault.last_active,
+        });
         msg!("Ping registrado.");
         Ok(())
     }
@@ -127,6 +150,11 @@ pub mod sucesion_segura {
             system_program::transfer(cpi_ctx, vault.guarantee_lamports)?;
         }
 
+        emit!(VaultCancelled {
+            owner: vault.owner,
+            refunded: vault.guarantee_lamports,
+            cancelled_at: clock.unix_timestamp,
+        });
         msg!("Bóveda cancelada. Garantía devuelta.");
         Ok(())
     }
@@ -138,12 +166,25 @@ pub mod sucesion_segura {
         require!(!vault.paused, SucesionError::AlreadyPaused);
         require!(max_days > 0 && max_days <= 90, SucesionError::InvalidPauseDuration);
 
+        // Reset anual: si han pasado más de 365 días desde el último ping,
+        // se reinicia el contador de pausas
+        const YEAR_SECONDS: i64 = 365 * 24 * 60 * 60;
+        if clock.unix_timestamp - vault.last_active > YEAR_SECONDS {
+            vault.pauses_count = 0;
+        }
+
         require!(vault.pauses_count < 3, SucesionError::TooManyPauses);
 
         vault.paused = true;
         vault.paused_at = clock.unix_timestamp;
         vault.max_pause_duration = max_days * 24 * 60 * 60;
         vault.pauses_count += 1;
+        emit!(VaultPaused {
+            owner: vault.owner,
+            paused_at: vault.paused_at,
+            max_pause_duration: vault.max_pause_duration,
+            pauses_count: vault.pauses_count,
+        });
         msg!("Pausada por {} días (pausa #{} del año)", max_days, vault.pauses_count);
         Ok(())
     }
@@ -157,8 +198,12 @@ pub mod sucesion_segura {
         vault.paused = false;
         vault.paused_at = 0;
         vault.max_pause_duration = 0;
-        vault.pauses_count = 0;
+        // NO se resetea pauses_count — se acumula durante la vida de la bóveda
         vault.last_active = clock.unix_timestamp;
+        emit!(VaultResumed {
+            owner: vault.owner,
+            resumed_at: vault.last_active,
+        });
         msg!("Bóveda reanudada.");
         Ok(())
     }
@@ -187,6 +232,11 @@ pub mod sucesion_segura {
 
         vault.is_triggered = true;
         vault.triggered_at = clock.unix_timestamp;
+        emit!(InheritanceTriggered {
+            owner: vault.owner,
+            triggered_at: vault.triggered_at,
+            triggered_by: ctx.accounts.caller.key(),
+        });
         msg!("Herencia activada.");
         Ok(())
     }
@@ -246,9 +296,74 @@ pub mod sucesion_segura {
             system_program::transfer(cpi_ctx2, rem)?;
         }
 
+        emit!(InheritanceClaimed {
+            owner: ctx.accounts.owner.key(),
+            beneficiary1: ctx.accounts.beneficiary1.key(),
+            beneficiary2: ctx.accounts.beneficiary2.key(),
+            amount: vault.guarantee_lamports,
+            claimed_at: Clock::get()?.unix_timestamp,
+        });
         msg!("Herencia reclamada.");
         Ok(())
     }
+}
+
+// ============================================================
+// EVENTS (V8)
+// ============================================================
+
+#[event]
+pub struct VaultCreated {
+    pub owner: Pubkey,
+    pub vault: Pubkey,
+    pub beneficiary1: Pubkey,
+    pub beneficiary2: Pubkey,
+    pub guarantee_lamports: u64,
+    pub inactivity_period: i64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct PingRegistered {
+    pub owner: Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct VaultPaused {
+    pub owner: Pubkey,
+    pub paused_at: i64,
+    pub max_pause_duration: i64,
+    pub pauses_count: u8,
+}
+
+#[event]
+pub struct VaultResumed {
+    pub owner: Pubkey,
+    pub resumed_at: i64,
+}
+
+#[event]
+pub struct InheritanceTriggered {
+    pub owner: Pubkey,
+    pub triggered_at: i64,
+    pub triggered_by: Pubkey,
+}
+
+#[event]
+pub struct InheritanceClaimed {
+    pub owner: Pubkey,
+    pub beneficiary1: Pubkey,
+    pub beneficiary2: Pubkey,
+    pub amount: u64,
+    pub claimed_at: i64,
+}
+
+#[event]
+pub struct VaultCancelled {
+    pub owner: Pubkey,
+    pub refunded: u64,
+    pub cancelled_at: i64,
 }
 
 // ============================================================
