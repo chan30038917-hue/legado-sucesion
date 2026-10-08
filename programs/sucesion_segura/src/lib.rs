@@ -55,6 +55,7 @@ pub mod sucesion_segura {
         vault.paused = false;
         vault.paused_at = 0;
         vault.max_pause_duration = 0;
+        vault.pauses_count = 0;
 
         let fee_accounts = SolTransfer {
             from: ctx.accounts.owner.to_account_info(),
@@ -98,6 +99,16 @@ pub mod sucesion_segura {
             SucesionError::NotYetExpired
         );
 
+        // Verificar que la PDA tenga suficiente para cubrir la garantía y quedar rent-exempt
+        let sol_vault_balance = ctx.accounts.sol_vault.lamports();
+        let rent = Rent::get()?;
+        let min_rent = rent.minimum_balance(0);
+
+        require!(
+            sol_vault_balance >= vault.guarantee_lamports + min_rent,
+            SucesionError::InsufficientRent
+        );
+
         if vault.guarantee_lamports > 0 {
             let owner_key = vault.owner;
             let bump = vault.sol_vault_bump;
@@ -127,10 +138,13 @@ pub mod sucesion_segura {
         require!(!vault.paused, SucesionError::AlreadyPaused);
         require!(max_days > 0 && max_days <= 90, SucesionError::InvalidPauseDuration);
 
+        require!(vault.pauses_count < 3, SucesionError::TooManyPauses);
+
         vault.paused = true;
         vault.paused_at = clock.unix_timestamp;
         vault.max_pause_duration = max_days * 24 * 60 * 60;
-        msg!("Pausada por {} días", max_days);
+        vault.pauses_count += 1;
+        msg!("Pausada por {} días (pausa #{} del año)", max_days, vault.pauses_count);
         Ok(())
     }
 
@@ -143,6 +157,7 @@ pub mod sucesion_segura {
         vault.paused = false;
         vault.paused_at = 0;
         vault.max_pause_duration = 0;
+        vault.pauses_count = 0;
         vault.last_active = clock.unix_timestamp;
         msg!("Bóveda reanudada.");
         Ok(())
@@ -396,6 +411,7 @@ pub struct Vault {
     pub paused: bool,
     pub paused_at: i64,
     pub max_pause_duration: i64,
+    pub pauses_count: u8,
 }
 
 // ============================================================
@@ -430,4 +446,8 @@ pub enum SucesionError {
     DuplicateBeneficiary,
     #[msg("El owner no puede ser heredero de sí mismo.")]
     OwnerCannotBeBeneficiary,
+    #[msg("Máximo 3 pausas por bóveda.")]
+    TooManyPauses,
+    #[msg("La PDA no tiene suficiente SOL para cubrir la garantía y quedar rent-exempt.")]
+    InsufficientRent,
 }
