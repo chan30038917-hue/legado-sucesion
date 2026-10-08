@@ -4,6 +4,7 @@ use anchor_lang::system_program::{self, Transfer as SolTransfer};
 declare_id!("2yNo3xJD5Qj1HYiAZZ4tKYgRp5HwLt2VXHjzckETMpYG");
 
 pub const FEE_LAMPORTS: u64 = 5_000_000; // 0.005 SOL
+pub const MAX_INACTIVITY_PERIOD: i64 = 10 * 365 * 24 * 60 * 60; // 10 años
 
 // ============================================================
 // FEE WALLET — CAMBIA ESTA DIRECCIÓN POR LA TUYA
@@ -22,7 +23,19 @@ pub mod sucesion_segura {
         guarantee_lamports: u64,
     ) -> Result<()> {
         require!(guarantee_lamports > 0, SucesionError::InvalidGuarantee);
-        require!(inactivity_period > 0, SucesionError::InvalidInactivityPeriod);
+        require!(
+            inactivity_period > 0 && inactivity_period <= MAX_INACTIVITY_PERIOD,
+            SucesionError::InvalidInactivityPeriod
+        );
+        require!(
+            ctx.accounts.beneficiary1.key() != ctx.accounts.beneficiary2.key(),
+            SucesionError::DuplicateBeneficiary
+        );
+        require!(
+            ctx.accounts.beneficiary1.key() != ctx.accounts.owner.key()
+                && ctx.accounts.beneficiary2.key() != ctx.accounts.owner.key(),
+            SucesionError::OwnerCannotBeBeneficiary
+        );
 
         let vault = &mut ctx.accounts.vault;
         vault.owner = ctx.accounts.owner.key();
@@ -172,6 +185,10 @@ pub mod sucesion_segura {
         let b2 = vault.beneficiary_pubkeys[1];
 
         require!(
+            ctx.accounts.beneficiary1.key() != ctx.accounts.beneficiary2.key(),
+            SucesionError::DuplicateBeneficiary
+        );
+        require!(
             ctx.accounts.beneficiary1.key() == b1 && ctx.accounts.beneficiary1.is_signer,
             SucesionError::Unauthorized
         );
@@ -315,10 +332,15 @@ pub struct ResumeInheritance<'info> {
 pub struct TriggerInheritance<'info> {
     #[account(mut)]
     pub caller: Signer<'info>,
+
+    /// CHECK: Owner de la bóveda, solo se usa para derivar la PDA
+    pub owner: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [b"vault", vault.owner.as_ref()],
+        seeds = [b"vault", owner.key().as_ref()],
         bump,
+        has_one = owner,
     )]
     pub vault: Account<'info, Vault>,
 }
@@ -402,6 +424,10 @@ pub enum SucesionError {
     InvalidFeeWallet,
     #[msg("La garantía debe ser mayor a 0.")]
     InvalidGuarantee,
-    #[msg("El período de inactividad debe ser mayor a 0.")]
+    #[msg("El período de inactividad debe estar entre 1 segundo y 10 años.")]
     InvalidInactivityPeriod,
+    #[msg("Los dos herederos deben ser diferentes.")]
+    DuplicateBeneficiary,
+    #[msg("El owner no puede ser heredero de sí mismo.")]
+    OwnerCannotBeBeneficiary,
 }

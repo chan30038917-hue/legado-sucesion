@@ -5,7 +5,6 @@ import { assert } from "chai";
 import * as fs from "fs";
 
 describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
-  // Configurar provider manualmente
   const walletPath = `${process.env.HOME}/.config/solana/id.json`;
   const walletKeypair = anchor.web3.Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(fs.readFileSync(walletPath, "utf-8")))
@@ -29,7 +28,6 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
   const beneficiary1 = anchor.web3.Keypair.generate();
   const beneficiary2 = anchor.web3.Keypair.generate();
 
-  // FEE_WALLET ahora es una dirección fija (hardcodeada en el contrato)
   const feeWallet = new anchor.web3.PublicKey(
     "Fng4pr8QMJf6idx1frCVA2n19rocRTrXmXKfKj9dApm6"
   );
@@ -42,10 +40,9 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
     "heredero1@example.com",
     "heredero2@example.com",
   ];
-  const guaranteeLamports = new anchor.BN(50_000_000); // 0.05 SOL
+  const guaranteeLamports = new anchor.BN(50_000_000);
 
   before(async () => {
-    // Fondear herederos con SOL
     for (const b of [beneficiary1, beneficiary2]) {
       const sig = await provider.connection.requestAirdrop(
         b.publicKey,
@@ -54,7 +51,6 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
       await provider.connection.confirmTransaction(sig);
     }
 
-    // Derivar PDAs
     [vaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from("vault"), owner.publicKey.toBuffer()],
       program.programId
@@ -67,8 +63,6 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
   });
 
   it("1. Inicializa la bóveda y cobra la comisión", async () => {
-    const feeBalanceBefore = await provider.connection.getBalance(feeWallet);
-
     await program.methods
       .initializeVault(inactivityPeriod, beneficiaryEmails, guaranteeLamports)
       .accounts({
@@ -82,19 +76,16 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
       })
       .rpc();
 
-    const feeBalanceAfter = await provider.connection.getBalance(feeWallet);
-
     const vaultAccount = await program.account.vault.fetch(vaultPda);
     assert.equal(vaultAccount.owner.toBase58(), owner.publicKey.toBase58());
     assert.equal(vaultAccount.isTriggered, false);
     assert.equal(vaultAccount.paused, false);
     assert.equal(vaultAccount.beneficiaryPubkeys.length, 2);
 
-    // Verificar que el vault tiene la garantía correcta en la PDA
     const solVaultBalance = await provider.connection.getBalance(solVaultPda);
     assert.isTrue(
       solVaultBalance >= 50_000_000,
-      "La PDA sol_vault debe tener al menos la garantía depositada (0.05 SOL)"
+      "La PDA sol_vault debe tener al menos la garantía (0.05 SOL)"
     );
 
     console.log(`✅ Bóveda creada. Garantía en PDA: ${solVaultBalance / 1e9} SOL`);
@@ -125,13 +116,16 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
   });
 
   it("4. Trigger falla porque está pausada", async () => {
-    console.log("⏳ Esperando 6 segundos...");
     await new Promise((r) => setTimeout(r, 6000));
 
     try {
       await program.methods
         .triggerInheritance()
-        .accounts({ caller: owner.publicKey, vault: vaultPda })
+        .accounts({
+          caller: owner.publicKey,
+          owner: owner.publicKey,
+          vault: vaultPda,
+        })
         .rpc();
       assert.fail("Debería fallar porque sigue pausada");
     } catch (err: any) {
@@ -157,7 +151,11 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
     try {
       await program.methods
         .triggerInheritance()
-        .accounts({ caller: owner.publicKey, vault: vaultPda })
+        .accounts({
+          caller: owner.publicKey,
+          owner: owner.publicKey,
+          vault: vaultPda,
+        })
         .rpc();
       assert.fail("Debería fallar, aún no expira");
     } catch (err: any) {
@@ -166,13 +164,16 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
     }
   });
 
-  it("7. Espera y activa la herencia", async () => {
-    console.log("⏳ Esperando 6 segundos...");
+  it("7. Espera y activa la herencia (owner como caller)", async () => {
     await new Promise((r) => setTimeout(r, 6000));
 
     await program.methods
       .triggerInheritance()
-      .accounts({ caller: owner.publicKey, vault: vaultPda })
+      .accounts({
+        caller: owner.publicKey,
+        owner: owner.publicKey,
+        vault: vaultPda,
+      })
       .rpc();
 
     const vaultAccount = await program.account.vault.fetch(vaultPda);
@@ -180,7 +181,7 @@ describe("sucesion_segura - Herencia 2-de-3 con pausa y comisión", () => {
     console.log("✅ Herencia activada.");
   });
 
-  it("8. Los 2 herederos reclaman (ahora con cuenta owner)", async () => {
+  it("8. Los 2 herederos reclaman (con cuenta owner)", async () => {
     await program.methods
       .claimInheritance()
       .accounts({
