@@ -158,8 +158,8 @@ export default function HelpPage() {
               <CardContent className="p-6">
                 <div className="mb-2 font-semibold">¿Puedo cambiar los herederos después?</div>
                 <p className="text-sm text-muted-foreground">
-                  Actualmente no. Los herederos se fijan al crear la bóveda.
-                  Próximamente añadiremos esta función.
+                  Sí, pero requiere cancelar la bóveda actual y crear una nueva.
+                  Los herederos se fijan al crear la bóveda por seguridad.
                 </p>
               </CardContent>
             </Card>
@@ -185,7 +185,7 @@ export default function HelpPage() {
               <CardContent className="p-6">
                 <div className="mb-2 font-semibold">¿Qué tokens puedo heredar?</div>
                 <p className="text-sm text-muted-foreground">
-                  SOL (moneda nativa) y tokens SPL estándar.
+                  SOL (moneda nativa de Solana).
                 </p>
               </CardContent>
             </Card>
@@ -193,8 +193,8 @@ export default function HelpPage() {
               <CardContent className="p-6">
                 <div className="mb-2 font-semibold">¿Qué coste tiene?</div>
                 <p className="text-sm text-muted-foreground">
-                  Solo las comisiones de red de Solana y la garantía que
-                  decidas bloquear. Sin comisiones por el servicio.
+                  Las comisiones de red de Solana más los costos por servicio
+                  (0.005 SOL) más la garantía que decidas bloquear.
                 </p>
               </CardContent>
             </Card>

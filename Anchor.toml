@@ -5,13 +5,16 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-sucesion_segura = "CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB"
+sucesion_segura = "2yNo3xJD5Qj1HYiAZZ4tKYgRp5HwLt2VXHjzckETMpYG"
+
+[programs.devnet]
+sucesion_segura = "2yNo3xJD5Qj1HYiAZZ4tKYgRp5HwLt2VXHjzckETMpYG"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "/home/usuariochan/.config/solana/id.json"
 
 [scripts]

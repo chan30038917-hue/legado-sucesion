@@ -320,8 +320,5 @@
       "name": "InvalidInactivityPeriod",
       "msg": "El período de inactividad debe ser mayor a 0."
     }
-  ],
-  "metadata": {
-    "address": "CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB"
-  }
+  ]
 }

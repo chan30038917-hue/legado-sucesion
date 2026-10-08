@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, Transfer as SolTransfer};
 
-declare_id!("CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB");
+declare_id!("2yNo3xJD5Qj1HYiAZZ4tKYgRp5HwLt2VXHjzckETMpYG");
 
 pub const FEE_LAMPORTS: u64 = 5_000_000; // 0.005 SOL
 

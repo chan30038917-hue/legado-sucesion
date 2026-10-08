@@ -10,5 +10,5 @@ export const RPC_ENDPOINT =
 export const connection = new Connection(RPC_ENDPOINT, "confirmed");
 
 export const PROGRAM_ID = new PublicKey(
-  "CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB"
+  "2yNo3xJD5Qj1HYiAZZ4tKYgRp5HwLt2VXHjzckETMpYG"
 );

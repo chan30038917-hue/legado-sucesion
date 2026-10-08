@@ -37,3 +37,6 @@ app/.vercel
 
 # Logs
 *.log
+
+# Backups
+*.bak
