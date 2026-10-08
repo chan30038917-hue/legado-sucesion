@@ -23,8 +23,8 @@ Millones de dólares en criptomonedas se pierden cada año porque sus dueños fa
 | Recurso | URL |
 |---------|-----|
 | **Frontend** | [https://legado-red.vercel.app](https://legado-red.vercel.app) |
-| **Contrato en Solana (Devnet)** | [Explorer](https://explorer.solana.com/address/CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB?cluster=devnet) |
-| **Program ID** | `CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB` |
+| **Contrato en Solana (Devnet)** | [Explorer](https://explorer.solana.com/address/2yNo3xJD5Qj1HYiAZZ4tKYgRp5HwLt2VXHjzckETMpYG?cluster=devnet) |
+| **Program ID** | `2yNo3xJD5Qj1HYiAZZ4tKYgRp5HwLt2VXHjzckETMpYG` |
 
 ---
 

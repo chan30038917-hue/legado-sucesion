@@ -1,0 +1,12 @@
+{
+  "name": "Legado",
+  "logo": "https://legado-red.vercel.app/favicon.ico",
+  "description": "Herencia de criptomonedas en Solana mediante un mecanismo de dead man's switch.",
+  "project_url": "https://legado-red.vercel.app",
+  "contacts": [
+    "email:chan30038917@gmail.com"
+  ],
+  "policy": "https://legado-red.vercel.app/legal",
+  "preferred_languages": ["es", "en"],
+  "source_code": "https://github.com/chan30038917-hue/legado-sucesion"
+}
