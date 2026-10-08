@@ -5,6 +5,12 @@ declare_id!("CuNU2U9vp7EhZLwYkDiCkbCLHxSsHKmgbC59ajbe1haB");
 
 pub const FEE_LAMPORTS: u64 = 5_000_000; // 0.005 SOL
 
+// ============================================================
+// FEE WALLET — CAMBIA ESTA DIRECCIÓN POR LA TUYA
+pub const FEE_WALLET: Pubkey = Pubkey::new_from_array([219, 182, 236, 230, 5, 128, 83, 192, 32, 157, 253, 126, 198, 149, 245, 57, 228, 130, 208, 91, 249, 246, 234, 84, 44, 229, 176, 41, 22, 151, 23, 193]);
+// ============================================================
+
+
 #[program]
 pub mod sucesion_segura {
     use super::*;
@@ -15,6 +21,9 @@ pub mod sucesion_segura {
         beneficiary_emails: [String; 2],
         guarantee_lamports: u64,
     ) -> Result<()> {
+        require!(guarantee_lamports > 0, SucesionError::InvalidGuarantee);
+        require!(inactivity_period > 0, SucesionError::InvalidInactivityPeriod);
+
         let vault = &mut ctx.accounts.vault;
         vault.owner = ctx.accounts.owner.key();
         vault.beneficiary_emails = beneficiary_emails.to_vec();
@@ -34,7 +43,6 @@ pub mod sucesion_segura {
         vault.paused_at = 0;
         vault.max_pause_duration = 0;
 
-        // 1. Cobrar comisión
         let fee_accounts = SolTransfer {
             from: ctx.accounts.owner.to_account_info(),
             to: ctx.accounts.fee_wallet.to_account_info(),
@@ -45,7 +53,6 @@ pub mod sucesion_segura {
         );
         system_program::transfer(fee_ctx, FEE_LAMPORTS)?;
 
-        // 2. Bloquear garantía en la PDA sol_vault
         let guarantee_accounts = SolTransfer {
             from: ctx.accounts.owner.to_account_info(),
             to: ctx.accounts.sol_vault.to_account_info(),
@@ -62,9 +69,7 @@ pub mod sucesion_segura {
 
     pub fn ping(ctx: Context<Ping>) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
-        require!(vault.owner == ctx.accounts.owner.key(), SucesionError::Unauthorized);
         require!(!vault.is_triggered, SucesionError::AlreadyTriggered);
-
         vault.last_active = Clock::get()?.unix_timestamp;
         msg!("Ping registrado.");
         Ok(())
@@ -72,7 +77,6 @@ pub mod sucesion_segura {
 
     pub fn cancel_vault(ctx: Context<CancelVault>) -> Result<()> {
         let vault = &ctx.accounts.vault;
-        require!(vault.owner == ctx.accounts.owner.key(), SucesionError::Unauthorized);
         require!(!vault.is_triggered, SucesionError::AlreadyTriggered);
 
         let clock = Clock::get()?;
@@ -81,7 +85,6 @@ pub mod sucesion_segura {
             SucesionError::NotYetExpired
         );
 
-        // Devolver la garantía al owner firmando con las seeds de la PDA
         if vault.guarantee_lamports > 0 {
             let owner_key = vault.owner;
             let bump = vault.sol_vault_bump;
@@ -107,7 +110,6 @@ pub mod sucesion_segura {
     pub fn pause_inheritance(ctx: Context<PauseInheritance>, max_days: i64) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
         let clock = Clock::get()?;
-        require!(vault.owner == ctx.accounts.owner.key(), SucesionError::Unauthorized);
         require!(!vault.is_triggered, SucesionError::AlreadyTriggered);
         require!(!vault.paused, SucesionError::AlreadyPaused);
         require!(max_days > 0 && max_days <= 90, SucesionError::InvalidPauseDuration);
@@ -122,7 +124,6 @@ pub mod sucesion_segura {
     pub fn resume_inheritance(ctx: Context<ResumeInheritance>) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
         let clock = Clock::get()?;
-        require!(vault.owner == ctx.accounts.owner.key(), SucesionError::Unauthorized);
         require!(!vault.is_triggered, SucesionError::AlreadyTriggered);
         require!(vault.paused, SucesionError::NotPaused);
 
@@ -138,6 +139,11 @@ pub mod sucesion_segura {
         let vault = &mut ctx.accounts.vault;
         let clock = Clock::get()?;
         require!(!vault.is_triggered, SucesionError::AlreadyTriggered);
+
+        let caller_key = ctx.accounts.caller.key();
+        let is_owner = caller_key == vault.owner;
+        let is_beneficiary = vault.beneficiary_pubkeys.contains(&caller_key);
+        require!(is_owner || is_beneficiary, SucesionError::Unauthorized);
 
         if vault.paused {
             require!(
@@ -176,9 +182,8 @@ pub mod sucesion_segura {
 
         vault.withdrawal_claimed = true;
 
-        // Repartir la garantía 50/50 firmando con las seeds de la PDA
         if vault.guarantee_lamports > 0 {
-            let owner_key = vault.owner;
+            let owner_key = ctx.accounts.owner.key();
             let bump = vault.sol_vault_bump;
             let seeds = &[b"sol_vault", owner_key.as_ref(), &[bump]];
             let signer = &[&seeds[..]];
@@ -186,7 +191,6 @@ pub mod sucesion_segura {
             let half = vault.guarantee_lamports / 2;
             let rem = vault.guarantee_lamports - half;
 
-            // Transferir mitad a beneficiario 1
             let cpi_accounts1 = SolTransfer {
                 from: ctx.accounts.sol_vault.to_account_info(),
                 to: ctx.accounts.beneficiary1.to_account_info(),
@@ -198,7 +202,6 @@ pub mod sucesion_segura {
             );
             system_program::transfer(cpi_ctx1, half)?;
 
-            // Transferir mitad a beneficiario 2
             let cpi_accounts2 = SolTransfer {
                 from: ctx.accounts.sol_vault.to_account_info(),
                 to: ctx.accounts.beneficiary2.to_account_info(),
@@ -243,8 +246,11 @@ pub struct InitializeVault<'info> {
     )]
     pub sol_vault: UncheckedAccount<'info>,
 
-    /// CHECK: Wallet donde se cobra la comisión
-    #[account(mut)]
+    /// CHECK: Wallet donde se cobra la comisión — dirección fija
+    #[account(
+        mut,
+        address = FEE_WALLET @ SucesionError::InvalidFeeWallet,
+    )]
     pub fee_wallet: UncheckedAccount<'info>,
 
     /// CHECK: heredero 1
@@ -309,7 +315,11 @@ pub struct ResumeInheritance<'info> {
 pub struct TriggerInheritance<'info> {
     #[account(mut)]
     pub caller: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"vault", vault.owner.as_ref()],
+        bump,
+    )]
     pub vault: Account<'info, Vault>,
 }
 
@@ -320,17 +330,21 @@ pub struct ClaimInheritance<'info> {
     #[account(mut)]
     pub beneficiary2: Signer<'info>,
 
+    /// CHECK: Owner de la bóveda, solo se usa para derivar la PDA
+    pub owner: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [b"vault", vault.owner.as_ref()],
+        seeds = [b"vault", owner.key().as_ref()],
         bump,
+        has_one = owner,
     )]
     pub vault: Account<'info, Vault>,
 
     /// CHECK: PDA que custodia la garantía en SOL
     #[account(
         mut,
-        seeds = [b"sol_vault", vault.owner.as_ref()],
+        seeds = [b"sol_vault", owner.key().as_ref()],
         bump = vault.sol_vault_bump,
     )]
     pub sol_vault: UncheckedAccount<'info>,
@@ -384,4 +398,10 @@ pub enum SucesionError {
     StillPaused,
     #[msg("La pausa debe ser entre 1 y 90 días.")]
     InvalidPauseDuration,
+    #[msg("Fee wallet inválida.")]
+    InvalidFeeWallet,
+    #[msg("La garantía debe ser mayor a 0.")]
+    InvalidGuarantee,
+    #[msg("El período de inactividad debe ser mayor a 0.")]
+    InvalidInactivityPeriod,
 }

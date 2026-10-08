@@ -1,17 +1,33 @@
 // scripts/monitor-and-send.ts
-// Revisa bóvedas activadas y envía correo a herederos.
+// Revisa bóvedas activadas y envía correo a herederos usando Gmail (Nodemailer).
 
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { SucesionSegura } from "../target/types/sucesion_segura";
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 
 dotenv.config();
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+// ---- Configuración de Gmail ----
+const GMAIL_USER = process.env.GMAIL_USER!;
+const GMAIL_APP_PASS = process.env.GMAIL_APP_PASS!;
 
+if (!GMAIL_USER || !GMAIL_APP_PASS) {
+  console.error("❌ Falta GMAIL_USER o GMAIL_APP_PASS en el .env");
+  process.exit(1);
+}
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_APP_PASS,
+  },
+});
+
+// ---- Configuración de Solana ----
 const walletPath =
   process.env.ANCHOR_WALLET || `${process.env.HOME}/.config/solana/id.json`;
 const walletKeypair = anchor.web3.Keypair.fromSecretKey(
@@ -55,7 +71,8 @@ async function revisarYEnviar() {
       const activadaEn = new Date(
         account.triggeredAt.toNumber() * 1000
       ).toISOString();
-      const montoYar = account.yarLockedAmount.toString();
+      // Campo correcto del contrato:
+      const garantiaSol = account.guaranteeLamports.toNumber() / 1e9;
 
       const cuerpo = `
         <h2>🔐 Herencia activada — Sucesión Segura</h2>
@@ -69,7 +86,7 @@ async function revisarYEnviar() {
           <li><strong>Propietario:</strong> <code>${dueno}</code></li>
           <li><strong>Dirección de la bóveda:</strong> <code>${publicKey.toBase58()}</code></li>
           <li><strong>Fecha de activación:</strong> ${activadaEn}</li>
-          <li><strong>Garantía YAR bloqueada:</strong> ${montoYar}</li>
+          <li><strong>Garantía bloqueada:</strong> ${garantiaSol} SOL</li>
         </ul>
 
         <h3>Cómo reclamar</h3>
@@ -84,9 +101,9 @@ async function revisarYEnviar() {
       `;
 
       try {
-        await sgMail.send({
-          to: correos,
-          from: process.env.SENDGRID_FROM!,
+        await transporter.sendMail({
+          from: GMAIL_USER,
+          to: correos.join(","),
           subject: "🔐 Herencia activada — Sucesión Segura",
           html: cuerpo,
         });
@@ -108,8 +125,28 @@ async function revisarYEnviar() {
   }
 }
 
-revisarYEnviar();
-setInterval(revisarYEnviar, INTERVALO_MS);
+// Si se llama con --test, envía un correo de prueba y sale.
+if (process.argv.includes("--test")) {
+  (async () => {
+    try {
+      console.log("📧 Enviando correo de prueba...");
+      await transporter.sendMail({
+        from: GMAIL_USER,
+        to: process.env.SENDGRID_TO_TEST || GMAIL_USER,
+        subject: "✅ Prueba — Monitor de Legado",
+        html: "<h2>Funciona 🎉</h2><p>El envío de correos con Gmail está OK.</p>",
+      });
+      console.log("✅ Correo de prueba enviado correctamente.");
+      process.exit(0);
+    } catch (err: any) {
+      console.error("❌ Falló el envío:", err.message);
+      process.exit(1);
+    }
+  })();
+} else {
+  revisarYEnviar();
+  setInterval(revisarYEnviar, INTERVALO_MS);
 
-console.log("📧 Monitor de correos activo. Revisando cada 5 minutos...");
-console.log("   (Ctrl+C para detener)");
+  console.log("📧 Monitor de correos activo. Revisando cada 5 minutos...");
+  console.log("   (Ctrl+C para detener)");
+}
