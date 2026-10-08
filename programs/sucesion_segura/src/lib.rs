@@ -67,6 +67,13 @@ pub mod sucesion_segura {
         );
         system_program::transfer(fee_ctx, FEE_LAMPORTS)?;
 
+        // Transferir garantía + rent-exempt mínimo a la PDA
+        let rent = Rent::get()?;
+        let min_rent = rent.minimum_balance(0);
+        let total_to_transfer = guarantee_lamports
+            .checked_add(min_rent)
+            .ok_or(SucesionError::InvalidGuarantee)?;
+
         let guarantee_accounts = SolTransfer {
             from: ctx.accounts.owner.to_account_info(),
             to: ctx.accounts.sol_vault.to_account_info(),
@@ -75,11 +82,9 @@ pub mod sucesion_segura {
             ctx.accounts.system_program.to_account_info(),
             guarantee_accounts,
         );
-        system_program::transfer(guarantee_ctx, guarantee_lamports)?;
+        system_program::transfer(guarantee_ctx, total_to_transfer)?;
 
         // V9: Verificar que la PDA sol_vault quede rent-exempt
-        let rent = Rent::get()?;
-        let min_rent = rent.minimum_balance(0);
         require!(
             ctx.accounts.sol_vault.lamports() >= min_rent,
             SucesionError::InsufficientRent
@@ -122,13 +127,11 @@ pub mod sucesion_segura {
             SucesionError::NotYetExpired
         );
 
-        // Verificar que la PDA tenga suficiente para cubrir la garantía y quedar rent-exempt
+        // Verificar que la PDA tenga al menos la garantía para devolver
         let sol_vault_balance = ctx.accounts.sol_vault.lamports();
-        let rent = Rent::get()?;
-        let min_rent = rent.minimum_balance(0);
 
         require!(
-            sol_vault_balance >= vault.guarantee_lamports + min_rent,
+            sol_vault_balance >= vault.guarantee_lamports,
             SucesionError::InsufficientRent
         );
 
